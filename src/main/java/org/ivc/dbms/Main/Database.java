@@ -1,5 +1,4 @@
 package org.ivc.dbms.Main;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -20,7 +19,7 @@ public class Database {
     public static String loggedInPerm = null;  // Changed to String for CHAR(7) consistency
 
     private static final String dbUsername = "ADMIN";
-    private static final String dbPassword = "";
+    private static final String dbPassword = "WINNEV174Adb";
     private static final String strConn = "jdbc:oracle:thin:@winnev1_tp?TNS_ADMIN=/Users/legitbrunogmail.com/Documents/Wallet_winnev1";
 
     public static void main(String[] args) {
@@ -87,19 +86,43 @@ public class Database {
         }
     }
 
-    public static boolean validateCredentials(String perm, String pin) {
-        try {
-            String sql = "SELECT * FROM test_students WHERE TRIM(perm) = ? AND TRIM(pin) = ?";
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, perm);
-            pstmt.setString(2, pin);
+        public static boolean validateCredentials(String perm, String pin) {
+    try {
+        String hashedPin = HashUtil.sha256(pin.trim());
 
-            ResultSet rs = pstmt.executeQuery();
-            return rs.next();  // returns true if a row is found
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
+        System.out.println("=== DEBUG LOGIN ===");
+        System.out.println("perm: [" + perm + "]");
+        System.out.println("raw pin: [" + pin + "]");
+        System.out.println("hashed pin: [" + hashedPin + "]");
+
+        String sql = "SELECT pin FROM test_students WHERE TRIM(perm) = ?";
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, perm.trim());
+
+        ResultSet rs = pstmt.executeQuery();
+        if (rs.next()) {
+            String storedPin = rs.getString("pin").trim();
+            System.out.println("stored pin: [" + storedPin + "]");
+            System.out.println("match? " + storedPin.equalsIgnoreCase(hashedPin));
+
         }
+        String sql2 = """
+            SELECT 1 FROM test_students
+            WHERE LOWER(TRIM(perm)) = ? AND LOWER(TRIM(pin)) = ?
+        """;
+        PreparedStatement pstmt2 = conn.prepareStatement(sql2);
+        pstmt2.setString(1, perm.trim().toLowerCase());
+        pstmt2.setString(2, hashedPin.toLowerCase());
+
+        return pstmt2.executeQuery().next();
+
+        
+    } catch (SQLException e) {
+        e.printStackTrace();
+        return false;
     }
+}
+
+
 
 }
