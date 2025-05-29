@@ -118,23 +118,31 @@ public class Student {
             }
         }
         return map;
-    }
+    }   
+        public static boolean verifyCurrentPin(String perm, String currentPin) throws SQLException {
+            String hashedPin = HashUtil.sha256(currentPin.trim()).toLowerCase();
 
-    public static boolean verifyCurrentPin(String perm, String currentPin) throws SQLException {
-        String sql = "SELECT 1 FROM test_students WHERE TRIM(perm) = ? AND TRIM(pin) = ?";
-        try (PreparedStatement stmt = Database.conn.prepareStatement(sql)) {
-            stmt.setString(1, perm.trim());
-            stmt.setString(2, currentPin.trim());  // ✅ Treat PIN as a string
-            ResultSet rs = stmt.executeQuery();
-            return rs.next();
+            String sql = """
+                SELECT 1 FROM test_students
+                WHERE LOWER(TRIM(perm)) = ? AND LOWER(TRIM(pin)) = ?
+            """;
+
+            try (PreparedStatement stmt = Database.conn.prepareStatement(sql)) {
+                stmt.setString(1, perm.trim().toLowerCase());
+                stmt.setString(2, hashedPin);
+                ResultSet rs = stmt.executeQuery();
+                return rs.next();
+            }
         }
-    }
 
 
-    public static boolean isPinAlreadyUsed(String newPin, String perm) throws SQLException {
+
+
+        public static boolean isPinAlreadyUsed(String newPin, String perm) throws SQLException {
+        String hashedPin = HashUtil.sha256(newPin.trim()).toLowerCase();
         String sql = "SELECT COUNT(*) AS count FROM test_students WHERE TRIM(pin) = ? AND TRIM(perm) <> ?";
         try (PreparedStatement stmt = Database.conn.prepareStatement(sql)) {
-            stmt.setString(1, newPin.trim());
+            stmt.setString(1, hashedPin);
             stmt.setString(2, perm.trim());
             ResultSet rs = stmt.executeQuery();
             return rs.next() && rs.getInt("count") > 0;
@@ -142,14 +150,17 @@ public class Student {
     }
 
 
+
     public static void updatePin(String perm, String newPin) throws SQLException {
+        String hashedPin = HashUtil.sha256(newPin.trim());
         String sql = "UPDATE test_students SET pin = ? WHERE TRIM(perm) = ?";
         try (PreparedStatement stmt = Database.conn.prepareStatement(sql)) {
-            stmt.setString(1, newPin.trim());
+            stmt.setString(1, hashedPin);
             stmt.setString(2, perm.trim());
             stmt.executeUpdate();
         }
     }
+
 
 
     public static String getCurrentCourses(String perm) throws SQLException {
