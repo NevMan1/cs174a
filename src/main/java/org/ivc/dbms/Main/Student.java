@@ -28,16 +28,17 @@ public class Student {
 
     public static CourseOfferingInfo getOfferingInfo(String courseNumber, int year, String quarter) throws SQLException {
     String sql = """
-        SELECT c.course_number, c.title,
-            o.professor_first, o.professor_last, o.time_slot,
-            o.max_enrollment, COUNT(e.perm) AS enrolled
-        FROM test_course_offerings o
-        JOIN test_courses c ON o.course_number = c.course_number
-        LEFT JOIN test_enrollments e ON o.enrollment_code = e.enrollment_code
-        WHERE o.course_number = ? AND o.year = ? AND o.quarter = ?
-        GROUP BY c.course_number, c.title, o.professor_first, o.professor_last, o.time_slot, o.max_enrollment
-        FETCH FIRST 1 ROWS ONLY
-    """;
+            SELECT c.course_number, c.title,
+                o.professor_first, o.professor_last, o.time_slot,
+                o.max_enrollment, COUNT(e.perm) AS enrolled
+            FROM test_course_offerings o
+            JOIN test_courses c ON o.course_number = c.course_number
+            LEFT JOIN test_enrollments e ON o.enrollment_code = e.enrollment_code
+            WHERE o.course_number = ? AND o.year = ? AND o.quarter = ?
+            GROUP BY c.course_number, c.title, o.professor_first, o.professor_last, o.time_slot, o.max_enrollment
+            FETCH FIRST 1 ROWS ONLY
+        """;
+
 
     
 
