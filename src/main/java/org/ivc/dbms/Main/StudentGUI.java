@@ -24,7 +24,7 @@ public class StudentGUI extends JFrame {
             enterGradesButton, transcriptButton, mailerButton;
 
     public StudentGUI() {
-        setTitle("Registrar Interface - IV College");
+        setTitle("Gold Interface - IV College");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(500, 400);
         setLayout(new BorderLayout());
@@ -54,27 +54,29 @@ public class StudentGUI extends JFrame {
         addButton.addActionListener(e -> {
             String perm = Database.loggedInPerm;
             if (perm == null) {
-                showInfo("❌ Not logged in.");
+                showInfo("Not logged in.");
                 return;
             }
 
             try {
                 String major = Student.getMajorByPerm(perm);
                 if (major == null) {
-                    showInfo("❌ Student not found.");
+                    showInfo("Student not found.");
                     return;
                 }
 
                 Map<String, String> courseMap = Student.getCoursesForMajorMap(major);
+                System.out.println("📋 [DEBUG] Courses for major " + major + ": " + courseMap);
+
                 if (courseMap.isEmpty()) {
                     showInfo("No courses found for major " + major + ".");
                     return;
                 }
 
                 JPanel panel = new JPanel(new GridLayout(0, 1, 5, 5));
-                Student.QuarterInfo qInfo = Student.getMostRecentQuarter();
+                Student.QuarterInfo qInfo = Student.getNextQuarterFromAllGrades();
                 if (qInfo == null) {
-                    showInfo("❌ No recent quarter found.");
+                    showInfo("No recent quarter found.");
                     return;
                 }
                 int year = qInfo.year;
