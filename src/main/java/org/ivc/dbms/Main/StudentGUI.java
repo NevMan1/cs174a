@@ -66,7 +66,7 @@ public class StudentGUI extends JFrame {
                 }
 
                 Map<String, String> courseMap = Student.getCoursesForMajorMap(major);
-                System.out.println("📋 [DEBUG] Courses for major " + major + ": " + courseMap);
+                System.out.println(" [DEBUG] Courses for major " + major + ": " + courseMap);
 
                 if (courseMap.isEmpty()) {
                     showInfo("No courses found for major " + major + ".");
@@ -96,7 +96,7 @@ public class StudentGUI extends JFrame {
                     if (info == null) continue;
 
                     String display = String.format(
-                        "%s – %s<br>🧑‍🏫 Instructor: %s<br>🕒 Time: %s<br>👥 Max: %d | Available: %d",
+                        "%s – %s<br> Instructor: %s<br> Time: %s<br> Max: %d | Available: %d",
                         info.courseNumber, info.title,
                         info.instructorName != null ? info.instructorName : "(Unknown)",
                         info.timeSlot != null ? info.timeSlot : "(TBD)",
@@ -215,7 +215,7 @@ public class StudentGUI extends JFrame {
                 if (courseList.isEmpty()) {
                     showInfo("You're not currently enrolled in any courses.");
                 } else {
-                    showInfo("📚 Current Enrollments:\n\n" + courseList);
+                    showInfo("Current Enrollments:\n\n" + courseList);
                 }
             } catch (SQLException ex) {
                 ex.printStackTrace();
@@ -233,12 +233,12 @@ public class StudentGUI extends JFrame {
 
             try {
                 String gradeList = Student.getGradesLastQuarter(perm);
-                System.out.println("📋 [GUI DEBUG] Grades received:\n" + gradeList);
+                System.out.println("[GUI DEBUG] Grades received:\n" + gradeList);
 
                 if (gradeList.isEmpty()) {
-                    showInfo("📭 No grades found for the last quarter.");
+                    showInfo("No grades found for the last quarter.");
                 } else {
-                    showInfo("📄 Grades from Last Quarter:\n\n" + gradeList);
+                    showInfo("Grades from Last Quarter:\n\n" + gradeList);
                 }
             } catch (SQLException ex) {
                 ex.printStackTrace();
@@ -256,7 +256,7 @@ public class StudentGUI extends JFrame {
 
             try {
                 String result = Student.getRequirementCheck(perm);
-                showInfo("📋 Requirement Check:\n\n" + result);
+                showInfo("Requirement Check:\n\n" + result);
             } catch (SQLException ex) {
                 ex.printStackTrace();
                 showInfo("❌ Error checking requirements.");
@@ -334,12 +334,12 @@ public class StudentGUI extends JFrame {
             try {
                 Map<String, List<String>> plan = Student.generateOptimalPlan(perm);
                 if (plan.isEmpty()) {
-                    showInfo("🎓 All requirements already completed!");
+                    showInfo("All requirements already completed!");
                     return;
                 }
 
                 StringBuilder sb = new StringBuilder();
-                sb.append("🗓️ Optimal Plan:\n\n");
+                sb.append("Optimal Plan:\n\n");
                 for (var entry : plan.entrySet()) {
                     sb.append(entry.getKey()).append(":\n");
                     for (String course : entry.getValue()) {
