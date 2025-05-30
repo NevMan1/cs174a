@@ -591,19 +591,40 @@ public static String getGradesLastQuarter(String perm) throws SQLException {
     public static Map<String, List<String>> generateOptimalPlan(String perm) throws SQLException {
     Map<String, List<String>> plan = new LinkedHashMap<>();
 
-    // Step 1: Get all required courses
+    // Step 1: Get major
     String major = getMajorByPerm(perm);
+
+    // Step 2: Separate required and elective courses
     Set<String> requiredCourses = new HashSet<>();
-    String requiredSql = "SELECT TRIM(course_number) FROM test_major_requirements WHERE TRIM(major_name) = ?";
-    try (PreparedStatement ps = Database.conn.prepareStatement(requiredSql)) {
+    Set<String> electiveCourses = new HashSet<>();
+
+    String reqSql = "SELECT course_number, is_elective FROM test_major_requirements WHERE TRIM(major_name) = ?";
+    try (PreparedStatement ps = Database.conn.prepareStatement(reqSql)) {
         ps.setString(1, major.trim());
         ResultSet rs = ps.executeQuery();
         while (rs.next()) {
-            requiredCourses.add(rs.getString(1).trim());
+            String course = rs.getString("course_number").trim();
+            String isElective = rs.getString("is_elective");
+            if ("Y".equalsIgnoreCase(isElective)) {
+                electiveCourses.add(course);
+            } else {
+                requiredCourses.add(course);
+            }
         }
     }
 
-    // Step 2: Get all completed courses
+    // Step 3: Get number of electives required
+    int numElectivesRequired = 0;
+    String electiveCountSql = "SELECT num_electives_required FROM test_majors WHERE TRIM(major_name) = ?";
+    try (PreparedStatement ps = Database.conn.prepareStatement(electiveCountSql)) {
+        ps.setString(1, major.trim());
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) {
+            numElectivesRequired = rs.getInt(1);
+        }
+    }
+
+    // Step 4: Get completed courses
     Set<String> completed = new HashSet<>();
     String completedSql = """
         SELECT DISTINCT TRIM(c.course_number)
@@ -620,7 +641,7 @@ public static String getGradesLastQuarter(String perm) throws SQLException {
         }
     }
 
-    // Step 3: Get currently enrolled courses
+    // Step 5: Get in-progress courses
     Set<String> inProgress = new HashSet<>();
     String inProgressSql = """
         SELECT DISTINCT TRIM(c.course_number)
@@ -637,32 +658,63 @@ public static String getGradesLastQuarter(String perm) throws SQLException {
         }
     }
 
-    // Step 4: Get prerequisites map
+    // Step 6: Determine remaining required and elective courses
+    Set<String> toTake = new HashSet<>();
+    for (String course : requiredCourses) {
+        if (!completed.contains(course) && !inProgress.contains(course)) {
+            toTake.add(course);
+        }
+    }
+
+    List<String> completedElectives = electiveCourses.stream().filter(completed::contains).toList();
+    List<String> inProgressElectives = electiveCourses.stream().filter(inProgress::contains).toList();
+    int electivesStillNeeded = numElectivesRequired - completedElectives.size() - inProgressElectives.size();
+
+    for (String course : electiveCourses) {
+        if (electivesStillNeeded <= 0) break;
+        if (!completed.contains(course) && !inProgress.contains(course)) {
+            toTake.add(course);
+            electivesStillNeeded--;
+        }
+    }
+
+    // Step 7: Load prerequisites
     Map<String, Set<String>> prereqMap = new HashMap<>();
     String prereqSql = "SELECT TRIM(course_number), TRIM(prereq_course) FROM test_prerequisites";
     try (PreparedStatement ps = Database.conn.prepareStatement(prereqSql);
          ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
-            String course = rs.getString(1).trim();
-            String prereq = rs.getString(2).trim();
+            String course = rs.getString(1);
+            String prereq = rs.getString(2);
             prereqMap.computeIfAbsent(course, k -> new HashSet<>()).add(prereq);
         }
     }
 
-    // Step 5: Get future quarters
+    // Step 8: Determine the current/next quarter
+    QuarterInfo nextQuarter = getNextQuarterFromAllGrades();
+    String currentRank = getQuarterRank(nextQuarter.year, nextQuarter.quarter);
+    int currentValue = getQuarterValue(currentRank);
+
+    // Step 9: Get future quarters only
     List<String> futureQuarters = new ArrayList<>();
     String quarterSql = """
-        SELECT quarter_rank FROM test_quarters
+        SELECT year, quarter FROM test_quarters
         ORDER BY year, CASE quarter WHEN 'W' THEN 1 WHEN 'S' THEN 2 WHEN 'F' THEN 3 END
     """;
     try (PreparedStatement ps = Database.conn.prepareStatement(quarterSql);
          ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
-            futureQuarters.add(rs.getString(1).trim());
+            int year = rs.getInt("year");
+            String quarter = rs.getString("quarter").trim();
+            String rank = getQuarterRank(year, quarter);
+            int rankValue = getQuarterValue(rank);
+            if (rankValue > currentValue) {
+                futureQuarters.add(rank);
+            }
         }
     }
 
-    // Step 6: Get course offerings by quarter_rank
+    // Step 10: Get offerings by quarter
     Map<String, Set<String>> offerings = new HashMap<>();
     String offeringSql = "SELECT TRIM(course_number), year, quarter FROM test_course_offerings";
     try (PreparedStatement ps = Database.conn.prepareStatement(offeringSql);
@@ -676,12 +728,8 @@ public static String getGradesLastQuarter(String perm) throws SQLException {
         }
     }
 
-    // Step 7: Build plan
-    Set<String> toTake = new HashSet<>(requiredCourses);
-    toTake.removeAll(completed);
-    toTake.removeAll(inProgress);
-    Set<String> scheduled = new HashSet<>();
-    scheduled.addAll(completed);
+    // Step 11: Schedule courses into future quarters
+    Set<String> scheduled = new HashSet<>(completed);
     scheduled.addAll(inProgress);
 
     for (String quarter : futureQuarters) {
@@ -709,6 +757,21 @@ public static String getGradesLastQuarter(String perm) throws SQLException {
 
     return plan;
 }
+
+private static int getQuarterValue(String rank) {
+    int year = Integer.parseInt(rank.substring(1));
+    char q = rank.charAt(0);
+    int qValue = switch (q) {
+        case 'W' -> 1;
+        case 'S' -> 2;
+        case 'F' -> 3;
+        default -> 0;
+    };
+    return year * 10 + qValue;
+}
+
+
+
 
 
 
